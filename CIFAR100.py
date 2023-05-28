@@ -40,49 +40,44 @@ test_loader = DataLoader(test, batch_size=64, num_workers=2)
 class VGG16_NET(nn.Module):
     def __init__(self):
         super(VGG16_NET, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
-        self.conv4 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1)
-        self.conv5 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)
-        self.conv6 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
-        self.conv7 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
-        self.conv8 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)
-        self.conv9 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.conv10 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.conv11 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.conv12 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.conv13 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.fc14 = nn.Linear(25088, 4096)
-        self.fc15 = nn.Linear(4096, 4096)
-        self.fc16 = nn.Linear(4096, 100)
+
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1)
+        self.relu1 = nn.ReLU(inplace=True)
+        self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.relu2 = nn.ReLU(inplace=True)
+        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
+        self.relu3 = nn.ReLU(inplace=True)
+        self.maxpool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.fc1 = nn.Linear(256 * 4 * 4, 512)
+        self.relu4 = nn.ReLU(inplace=True)
+
+        self.fc2 = nn.Linear(512, 100)  # Output classes: 100
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = self.maxpool(x)
-        x = F.relu(self.conv3(x))
-        x = F.relu(self.conv4(x))
-        x = self.maxpool(x)
-        x = F.relu(self.conv5(x))
-        x = F.relu(self.conv6(x))
-        x = F.relu(self.conv7(x))
-        x = self.maxpool(x)
-        x = F.relu(self.conv8(x))
-        x = F.relu(self.conv9(x))
-        x = F.relu(self.conv10(x))
-        x = self.maxpool(x)
-        x = F.relu(self.conv11(x))
-        x = F.relu(self.conv12(x))
-        x = F.relu(self.conv13(x))
-        x = self.maxpool(x)
-        x = x.reshape(x.shape[0], -1)
-        x = F.relu(self.fc14(x))
-        x = F.dropout(x, 0.5)  # dropout was included to combat overfitting
-        x = F.relu(self.fc15(x))
-        x = F.dropout(x, 0.5)
-        x = self.fc16(x)
+        x = self.conv1(x)
+        x = self.relu1(x)
+        x = self.maxpool1(x)
+
+        x = self.conv2(x)
+        x = self.relu2(x)
+        x = self.maxpool2(x)
+
+        x = self.conv3(x)
+        x = self.relu3(x)
+        x = self.maxpool3(x)
+
+        x = x.view(x.size(0), -1)
+
+        x = self.fc1(x)
+        x = self.relu4(x)
+
+        x = self.fc2(x)
+
         return x
 
 
@@ -101,7 +96,7 @@ train_loss = []
 # test_loss = []
 
 # number of times the entire training dataset will be passed through the model.
-num_epochs = 3
+num_epochs = 20
 
 # outer loop iterates over the specified number of epochs.decide the num_epochs, I tried 5
 for epoch in range(num_epochs):
@@ -165,7 +160,8 @@ for epoch in range(num_epochs):
         train_accuracy.append(average_train_accuracy)
         # calculates the accuracy by dividing the number of correct predictions (correct)
         # by the total number of evaluated samples (samples), and then multiplies by 100 to get a percentage
-        print(f"accuracy {float(correct) / float(samples) * 100:.2f} percentage || Correct {correct} out of {samples} samples")
+        print(
+            f"accuracy {float(correct) / float(samples) * 100:.2f} percentage || Correct {correct} out of {samples} samples")
 
 torch.save(model.state_dict(), "cifar100_vgg16_model.pt")  # SAVES THE TRAINED MODEL
 
@@ -178,7 +174,6 @@ total = 0
 test_loss_val = 0
 
 with torch.no_grad():
-
     for images, labels in test_loader:
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
@@ -190,11 +185,11 @@ with torch.no_grad():
 
 accuracy = 100 * correct / total
 average_loss = test_loss_val / len(test_loader)
-print('Test Accuracy: {:.2f}%' .format(accuracy))
-print('Test Loss: {:.2f}%' .format(average_loss))
+print('Test Accuracy: {:.2f}%'.format(accuracy))
+print('Test Loss: {:.2f}%'.format(average_loss))
 
 # Plotting Accuracy and Loss
-epochs = range(1, num_epochs+1)
+epochs = range(1, num_epochs + 1)
 
 plt.figure(figsize=(10, 5))
 
